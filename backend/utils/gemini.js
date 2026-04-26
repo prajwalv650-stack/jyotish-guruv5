@@ -23,9 +23,17 @@ const MODEL_RETRY_DELAY = 30000; // 30 seconds before retrying a failed model
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is not set");
+    console.error("❌ CRITICAL: GEMINI_API_KEY environment variable is not set!");
+    throw new Error("GEMINI_API_KEY environment variable is not set. Please configure it in Railway.");
   }
-  return new GoogleGenerativeAI(apiKey);
+  
+  console.log(`✅ Gemini API key loaded (length: ${apiKey.length} chars)`);
+  try {
+    return new GoogleGenerativeAI(apiKey);
+  } catch (error) {
+    console.error("❌ Failed to initialize GoogleGenerativeAI:", error.message);
+    throw error;
+  }
 };
 
 /**
@@ -68,12 +76,16 @@ const markModelFailed = (model) => {
  */
 const askGemini = async (prompt) => {
   try {
+    console.log("🔵 Starting askGemini...");
     const genAI = getGeminiClient();
     const availableModels = SUPPORTED_MODELS.filter(m => modelStatus[m].available);
+    
+    console.log(`📊 Available models: ${availableModels.length}/${SUPPORTED_MODELS.length}`);
     
     if (availableModels.length === 0) {
       // All models in cooldown, try all in order
       availableModels.push(...SUPPORTED_MODELS);
+      console.log("⚠️  All models in cooldown, trying all...");
     }
     
     let lastError;
@@ -82,10 +94,17 @@ const askGemini = async (prompt) => {
       try {
         console.log(`🔄 Trying model: ${modelName}...`);
         const model = genAI.getGenerativeModel({ model: modelName });
+        console.log(`📤 Sending prompt to ${modelName} (${prompt.length} chars)...`);
+        
         const result = await model.generateContent(prompt);
         
-        if (!result?.response?.text) {
-          throw new Error("No response text received");
+        if (!result?.response) {
+          throw new Error("No response object received from API");
+        }
+        
+        const text = result.response.text();
+        if (!text) {
+          throw new Error("Empty response text from API");
         }
         
         // Mark model as available if it succeeded
@@ -94,21 +113,22 @@ const askGemini = async (prompt) => {
           modelStatus[modelName].failedAt = null;
         }
         
-        console.log(`✅ Request succeeded with model: ${modelName}`);
-        return result.response.text();
+        console.log(`✅ Request succeeded with model: ${modelName} (${text.length} chars)`);
+        return text;
       } catch (error) {
         lastError = error;
-        console.warn(`⚠️  Model ${modelName} failed: ${error.message}`);
+        const errorMsg = error?.message || String(error);
+        console.error(`❌ Model ${modelName} failed:`, errorMsg);
         markModelFailed(modelName);
         // Continue to next model
       }
     }
     
     // If all models failed
-    console.error("❌ All models failed:", lastError);
+    console.error("❌ All models exhausted");
     throw new Error(`All Gemini models failed. Last error: ${lastError?.message}`);
   } catch (error) {
-    console.error("Fatal error in askGemini:", error);
+    console.error("🔴 Fatal error in askGemini:", error.message);
     throw error;
   }
 };

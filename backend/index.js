@@ -20,7 +20,24 @@ app.use(express.static(path.join(__dirname, "../frontend/build")));
 
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({ status: "Astrology API running ✨" });
+  const hasKey = !!process.env.GEMINI_API_KEY;
+  res.json({ 
+    status: "Astrology API running ✨",
+    geminiConfigured: hasKey,
+    environment: process.env.NODE_ENV || "unknown"
+  });
+});
+
+// Diagnostics endpoint
+app.get("/api/diagnostics", (req, res) => {
+  const hasKey = !!process.env.GEMINI_API_KEY;
+  res.json({
+    geminiApiKeyPresent: hasKey,
+    geminiApiKeyLength: process.env.GEMINI_API_KEY?.length || 0,
+    supportedModels: SUPPORTED_MODELS,
+    modelStatus: modelStatus,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Model status endpoint

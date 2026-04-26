@@ -81,7 +81,23 @@ router.post("/", async (req, res) => {
       console.log("✅ Interpretation generated successfully");
     } catch (interpError) {
       console.error("Error generating interpretation:", interpError.message);
-      interpretation = "Unable to generate interpretation at this moment. Please try again later.";
+      
+      // Generate basic fallback interpretation without AI
+      const lagna = chartData?.ascendant?.sign || "Unknown";
+      const moon = chartData?.moon?.sign || "Unknown";
+      const sun = chartData?.sun?.sign || "Unknown";
+      
+      interpretation = `
+BIRTH CHART ANALYSIS FOR ${name}
+
+Lagna: ${lagna}
+Sun: ${sun}
+Moon: ${moon}
+
+Due to high demand, detailed AI interpretation is temporarily unavailable. However, your birth chart has been calculated successfully with the following planetary positions above.
+
+Please refresh the page or try again in a few moments for the full AI-powered interpretation with 10-year predictions.
+      `.trim();
     }
 
     // Step 4: Return both raw data and AI interpretation
