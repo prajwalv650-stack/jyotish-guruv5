@@ -1,0 +1,36 @@
+// index.js - Main server file
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+
+const birthChartRoutes = require("./routes/birthChart");
+const matchRoutes = require("./routes/match");
+const horoscopeRoutes = require("./routes/horoscope");
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get("/", (req, res) => {
+  res.json({ status: "Astrology API running ✨" });
+});
+
+// Routes
+app.use("/api/birth-chart", birthChartRoutes);
+app.use("/api/match", matchRoutes);
+app.use("/api/horoscope", horoscopeRoutes);
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Server error:", err.message);
+  res.status(500).json({ error: "Internal server error", details: err.message });
+});
+
+// Use Railway's PORT or fallback to 3001
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`🌟 Astrology backend running on port ${PORT}`);
+});
