@@ -103,108 +103,294 @@ const askGemini = async (prompt) => {
 };
 
 /**
- * Generate birth chart interpretation with enhanced AI predictions
+ * Generate birth chart interpretation with enhanced AI predictions (10 years)
  */
-const interpretBirthChart = async (chartData, name) => {
-  // Extract key data for more detailed analysis
-  const lagna = chartData.ascendant?.sign || "Unknown";
-  const sun = chartData.sun?.sign || "Unknown";
-  const moon = chartData.moon?.sign || "Unknown";
-  const venus = chartData.planets?.Venus?.sign || "Unknown";
-  const mars = chartData.planets?.Mars?.sign || "Unknown";
-  const jupiter = chartData.planets?.Jupiter?.sign || "Unknown";
-  const saturn = chartData.planets?.Saturn?.sign || "Unknown";
-  
-  const prompt = `
-You are an expert Vedic astrologer with deep knowledge of natal chart interpretation and predictive astrology.
+const interpretBirthChart = async (chartData, name, dob = "") => {
+  try {
+    // Safely extract chart data with fallbacks
+    const ascendant = chartData?.ascendant || {};
+    const sun = chartData?.sun || {};
+    const moon = chartData?.moon || {};
+    const planets = chartData?.planets || {};
+    
+    const lagna = ascendant.sign || "Unknown";
+    const sunSign = sun.sign || "Unknown";
+    const moonSign = moon.sign || "Unknown";
+    
+    const prompt = `
+You are an expert Vedic astrologer specializing in natal chart analysis and long-term predictive astrology.
 
 NATIVE DETAILS:
 Name: ${name}
+Date of Birth: ${dob}
 
 ACCURATE BIRTH CHART DATA:
-- Lagna/Ascendant: ${lagna} (${chartData.ascendant?.degrees?.toFixed(2) || "N/A"}°)
-- Sun: ${sun} (House ${chartData.sun?.house || "N/A"})
-- Moon: ${moon} (House ${chartData.moon?.house || "N/A"}, Nakshatra: ${chartData.moon?.nakshatra || "N/A"})
-- Mercury: ${chartData.planets?.Mercury?.sign || "N/A"} (House ${chartData.planets?.Mercury?.house || "N/A"})
-- Venus: ${venus} (House ${chartData.planets?.Venus?.house || "N/A"})
-- Mars: ${mars} (House ${chartData.planets?.Mars?.house || "N/A"})
-- Jupiter: ${jupiter} (House ${chartData.planets?.Jupiter?.house || "N/A"})
-- Saturn: ${saturn} (House ${chartData.planets?.Saturn?.house || "N/A"})
-- Rahu: ${chartData.planets?.Rahu?.sign || "N/A"} (House ${chartData.planets?.Rahu?.house || "N/A"})
-- Ketu: ${chartData.planets?.Ketu?.sign || "N/A"} (House ${chartData.planets?.Ketu?.house || "N/A"})
+Lagna/Ascendant: ${lagna} (${ascendant.degrees?.toFixed(2) || "N/A"}°)
+Sun: ${sunSign} (House ${sun.house || "N/A"})
+Moon: ${moonSign} (House ${moon.house || "N/A"}, Nakshatra: ${moon.nakshatra || "N/A"})
+Mercury: ${planets.Mercury?.sign || "N/A"} (House ${planets.Mercury?.house || "N/A"})
+Venus: ${planets.Venus?.sign || "N/A"} (House ${planets.Venus?.house || "N/A"})
+Mars: ${planets.Mars?.sign || "N/A"} (House ${planets.Mars?.house || "N/A"})
+Jupiter: ${planets.Jupiter?.sign || "N/A"} (House ${planets.Jupiter?.house || "N/A"})
+Saturn: ${planets.Saturn?.sign || "N/A"} (House ${planets.Saturn?.house || "N/A"})
+Rahu: ${planets.Rahu?.sign || "N/A"} (House ${planets.Rahu?.house || "N/A"})
+Ketu: ${planets.Ketu?.sign || "N/A"} (House ${planets.Ketu?.house || "N/A"})
 
-ANALYSIS INSTRUCTIONS:
-Use classical Vedic astrology principles to provide accurate, data-driven predictions.
+DETAILED ANALYSIS:
 
-Please provide a detailed interpretation covering:
+1. **PERSONALITY & CORE NATURE** (6-8 sentences):
+Provide a comprehensive analysis of ${name}'s fundamental personality traits, strengths, and innate challenges based on:
+- Lagna for physical appearance and overall personality
+- Sun sign for core identity, ego, and life purpose
+- Moon sign for emotional nature and subconscious patterns
+- Ascendant lord's position for personality expression
 
-1. **Personality & Core Nature** (4-5 sentences):
-   - Analyze Lagna for overall personality and health
-   - Consider Sun for identity and ego
-   - Include Moon for emotional nature
-   - Mention key strengths and innate challenges
+2. **CAREER & PROFESSIONAL PATH** (6-8 sentences):
+Detail suitable professions and career trajectory including:
+- 10th house analysis and its ruler's position
+- Jupiter's role in expansion and professional luck
+- Mercury's influence on communication and intellectual work
+- Saturn's timing for career achievements and structured growth
+- Specific career suggestions matching planetary positions
 
-2. **Career & Finances** (4-5 sentences):
-   - Analyze 10th house ruler and career indicators
-   - Consider Jupiter for expansion and luck
-   - Mercury for intellectual pursuits
-   - Predict suitable professions and financial patterns
+3. **LOVE, MARRIAGE & RELATIONSHIPS** (6-8 sentences):
+Provide relationship guidance covering:
+- 7th house for marriage and partnership
+- Venus for romantic nature and attraction
+- Mars for passion and physical compatibility
+- Moon for emotional compatibility needs
+- Timing of significant relationships (next 3-5 years)
 
-3. **Love & Relationships** (3-4 sentences):
-   - Analyze 7th house and Venus for romantic life
-   - Mars influence on passion and compatibility
-   - Saturn's role in long-term commitment
-   - Timeline for significant relationships
+4. **HEALTH & WELLNESS** (4-5 sentences):
+Health patterns and recommendations:
+- Lagna strength for physical constitution
+- Moon's influence on mental health
+- Areas prone to health challenges
+- Recommended wellness practices
 
-4. **Health Patterns** (2-3 sentences):
-   - Moon and 8th house influence
-   - Lagna strength for physical constitution
-   - Vulnerable periods and health recommendations
+5. **FINANCIAL PROSPERITY** (5-6 sentences):
+Financial outlook and wealth potential:
+- 2nd and 11th house analysis for wealth
+- Jupiter's role in financial expansion
+- Saturn's lessons in financial discipline
+- Areas of financial opportunity
+- Investment timing and financial planning
 
-5. **Life Predictions** (5-6 sentences):
-   - Current Dasha/planetary period influence
-   - Next 2-3 years outlook and major events
-   - Saturn transit effects if applicable
-   - Auspicious periods for major decisions
-   - Challenges to be prepared for
+6. **NEXT 10 YEARS DETAILED PREDICTIONS** (15-20 sentences - THIS IS CRITICAL):
 
-6. **Spiritual & Personal Growth** (2-3 sentences):
-   - Nodes (Rahu/Ketu) spiritual lessons
-   - Saturn's wisdom and maturity phases
-   - Recommended practices or focus areas
+Provide YEAR-BY-YEAR major events, opportunities, and challenges for the next 10 years:
 
-Keep predictions specific, honest, and based on planetary positions.
-Use Vedic astrology terminology and principles.
-Provide actionable insights while maintaining accuracy.
-Format with clear headers as shown above.
+CURRENT YEAR TO NEXT 2-3 YEARS:
+- Major themes and life focus areas
+- Opportunities and challenges
+- Relationship developments
+- Career/financial movements
+- Health considerations
+
+YEARS 3-5 (MID-TERM):
+- Significant life transitions expected
+- Career advancements or changes
+- Relationship milestones (marriage, children, etc.)
+- Financial growth periods
+- Health improvements or challenges
+
+YEARS 5-10 (LONG-TERM):
+- Major life achievements and goals
+- Spiritual growth and maturity
+- Career peak periods or shifts
+- Family expansion (if applicable)
+- Wealth accumulation timeline
+- Important timing for major decisions
+
+Base predictions on:
+- Current planetary transits and Dasha periods
+- Saturn transits and life lessons
+- Jupiter's beneficial periods (Guru Peyarchi)
+- 7-year cycles and Saturn Returns
+- Nodal cycles and spiritual evolution
+
+7. **SPIRITUAL & PERSONAL GROWTH** (4-5 sentences):
+- Rahu/Ketu axis for spiritual lessons
+- Saturn's wisdom phases and maturity
+- Recommended spiritual practices
+- Life purpose and soul lessons
+
+8. **STRENGTHS & TALENTS** (3-4 sentences):
+Specific talents and strengths to leverage.
+
+9. **CHALLENGES TO OVERCOME** (3-4 sentences):
+Areas requiring conscious work and growth.
+
+10. **REMEDIES & RECOMMENDATIONS** (3-4 sentences):
+Practical advice for maximizing positive karma and mitigating challenges.
+
+IMPORTANT GUIDELINES:
+- Use classical Vedic astrology terminology (Dasha, Rashi, Bhava, Nakshatra, etc.)
+- Provide specific, actionable predictions based on planetary positions
+- Be honest but constructive in addressing challenges
+- Focus on the 10-year outlook as the primary prediction period
+- Use clear section headers as shown above
+- Write in an insightful, professional, and encouraging tone
+- Base all predictions on legitimate Vedic astrology principles
 `;
-  return await askGemini(prompt);
+
+    return await askGemini(prompt);
+  } catch (error) {
+    console.error("Error in interpretBirthChart:", error.message);
+    throw error;
+  }
 };
 
 /**
- * Generate compatibility summary for Kundali matching
+ * Generate detailed compatibility analysis for Kundali matching (10+ years outlook)
  */
 const interpretCompatibility = async (boyName, girlName, boyMoon, girlMoon, gunaMilanResult) => {
   const prompt = `
-You are a Vedic astrologer specializing in Kundali matching.
+You are an expert Vedic astrologer specializing in comprehensive Kundali matching and marriage compatibility analysis.
 
-MATCHING DETAILS:
-- Person 1: ${boyName}, Moon Sign: ${boyMoon}
-- Person 2: ${girlName}, Moon Sign: ${girlMoon}
+COUPLE DETAILS:
+- Person 1 (Male): ${boyName}, Moon Sign: ${boyMoon}
+- Person 2 (Female): ${girlName}, Moon Sign: ${girlMoon}
 
 GUNA MILAN SCORE: ${gunaMilanResult.score} / 36
 
-BREAKDOWN:
+DETAILED GUNA BREAKDOWN:
 ${Object.entries(gunaMilanResult.details).map(([k, v]) => `- ${k}: ${v}`).join("\n")}
 
-Please provide:
-1. **Overall Compatibility**: One sentence summarizing the match quality
-2. **Strengths**: 2-3 areas where this couple will thrive
-3. **Challenges**: 1-2 areas to be mindful of
-4. **Recommendation**: Final advice about this union (1-2 sentences)
+COMPREHENSIVE ANALYSIS:
 
-Score interpretation: <18 = challenging, 18-24 = acceptable, 24-32 = good, 32-36 = excellent
-Be honest but diplomatic.
+1. **OVERALL COMPATIBILITY ASSESSMENT** (4-5 sentences):
+Provide a thorough overview of this couple's marriage potential:
+- Overall compatibility level and quality of match
+- Basic compatibility of temperament and nature
+- Long-term relationship potential
+- Key factors contributing to success or challenges
+
+2. **EMOTIONAL & TEMPERAMENT COMPATIBILITY** (5-6 sentences):
+Based on Moon signs and emotional nature:
+- Emotional understanding and empathy between partners
+- Conflict resolution patterns
+- Support and comfort provision in relationship
+- Emotional intimacy and bonding potential
+
+3. **INTELLECTUAL & SOCIAL COMPATIBILITY** (4-5 sentences):
+How well they relate intellectually and socially:
+- Communication compatibility
+- Shared interests and social compatibility
+- Intellectual stimulation in relationship
+- Friendship and companionship quality
+
+4. **PHYSICAL & ROMANTIC COMPATIBILITY** (4-5 sentences):
+Passion and romantic aspects:
+- Physical attraction and chemistry
+- Intimate life compatibility
+- Passion and desire balance
+- Romance and affection patterns
+
+5. **FINANCIAL & PRACTICAL COMPATIBILITY** (4-5 sentences):
+Material and practical life together:
+- Financial planning and money management compatibility
+- Work-life balance support
+- Domestic harmony and household management
+- Practical living arrangements compatibility
+
+6. **FAMILY & CHILDREN** (4-5 sentences):
+Family life and parenting:
+- Parenting styles and agreement on values
+- Family relationships and in-law compatibility
+- Children planning and family expansion
+- Family responsibility sharing
+
+7. **STRENGTHS OF THIS MARRIAGE** (6-8 sentences):
+Detailed list of areas where this couple will thrive:
+- Specific strengths from Moon sign compatibility
+- Areas of natural support and harmony
+- Positive cycles and timing advantages
+- Talents they bring to relationship
+- Bonding opportunities and joint interests
+
+8. **CHALLENGES & AREAS OF CONCERN** (6-8 sentences):
+Honest assessment of challenges:
+- Potential areas of friction or misunderstanding
+- Communication challenges
+- Different values or lifestyle preferences
+- Timing mismatches in personal goals
+- Recommended approaches to overcome challenges
+
+9. **NEXT 10+ YEARS DETAILED MARRIAGE PREDICTIONS** (20-25 sentences - MOST IMPORTANT):
+
+Provide YEAR-BY-YEAR predictions for the first 10 years of marriage:
+
+**FIRST YEAR (Honeymoon Phase)**:
+- Adjustment period and bonding
+- Expectations vs. reality
+- Key adjustments needed
+- Opportunities for deepening connection
+
+**YEARS 2-3**:
+- Relationship stabilization
+- Children planning considerations
+- Career/financial developments
+- Family integration challenges
+
+**YEARS 4-5**:
+- Mid-relationship phase
+- Major decisions (children, home, career)
+- Financial growth opportunities
+- Potential crisis periods requiring attention
+
+**YEARS 5-7**:
+- Maturation of relationship
+- Family establishment (children if planned)
+- Career advancements
+- Life purpose alignment
+
+**YEARS 7-10**:
+- Long-term stability assessment
+- Relationship depth and commitment
+- Family responsibilities peak
+- Future planning and goals
+
+**10+ YEARS**:
+- Golden years of marriage
+- Spiritual partnership evolution
+- Legacy and life purpose
+- Continued growth and adaptation
+
+Predict based on:
+- Moon sign compatibility cycles
+- Saturn transits and marriage tests
+- Jupiter's beneficial periods
+- 7-year marriage cycles
+- Nodal influences on relationships
+- Timing of major life events
+
+10. **AUSPICIOUS TIMING FOR MARRIAGE** (3-4 sentences):
+Best timing for marriage and major life events together.
+
+11. **REMEDIES & RECOMMENDATIONS** (6-8 sentences):
+Practical guidance to strengthen marriage:
+- Specific remedies for challenging areas
+- Spiritual practices to do together
+- Communication techniques
+- Date nights and bonding activities
+- How to navigate challenges together
+- Maximizing positive karma periods
+
+12. **FINAL VERDICT** (3-4 sentences):
+- Clear recommendation on proceeding with marriage
+- Likelihood of long-term success
+- Overall encouragement or caution
+- Hope and optimism for the relationship
+
+IMPORTANT GUIDELINES:
+- Use Vedic astrology principles and terminology
+- Be honest but diplomatic about challenges
+- Provide specific, actionable marriage advice
+- Focus heavily on 10+ year outlook
+- Use clear section headers as shown
+- Maintain professional, encouraging tone
+- Base all predictions on Moon sign compatibility and Guna Milan principles
 `;
   return await askGemini(prompt);
 };
