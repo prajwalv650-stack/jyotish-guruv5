@@ -1,0 +1,14 @@
+{
+  "name": "jyotish-guru",
+  "version": "1.0.0",
+  "description": "Astrology App",
+  "main": "backend/index.js",
+  "scripts": {
+    "start": "cd backend && npm install && npm start",
+    "dev": "cd backend && npm install && npm run dev",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
