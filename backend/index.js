@@ -2,6 +2,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const birthChartRoutes = require("./routes/birthChart");
 const matchRoutes = require("./routes/match");
@@ -13,8 +14,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from the React frontend
+app.use(express.static(path.join(__dirname, "../frontend/build")));
+
 // Health check
-app.get("/", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({ status: "Astrology API running ✨" });
 });
 
@@ -22,6 +26,11 @@ app.get("/", (req, res) => {
 app.use("/api/birth-chart", birthChartRoutes);
 app.use("/api/match", matchRoutes);
 app.use("/api/horoscope", horoscopeRoutes);
+
+// Serve React app for all other routes
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/build", "index.html"));
+});
 
 // Global error handler
 app.use((err, req, res, next) => {
