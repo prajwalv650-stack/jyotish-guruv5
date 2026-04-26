@@ -1,13 +1,48 @@
 // routes/birthChart.js - Birth chart calculation and interpretation
+// Uses external API for accurate charts + Gemini AI for predictions
 
 const express = require("express");
+const axios = require("axios");
 const router = express.Router();
 const { calculateBirthChart } = require("../utils/astroCalc");
 const { interpretBirthChart } = require("../utils/gemini");
 
 /**
+ * Fetch birth chart from AstroAPI (accurate Swiss Ephemeris calculations)
+ */
+const fetchFromAstroAPI = async (dob, tob, lat, lon) => {
+  try {
+    // Try using free astrology API
+    const dateTime = `${dob}T${tob}:00`;
+    const year = dob.split('-')[0];
+    const month = dob.split('-')[1];
+    const day = dob.split('-')[2];
+    const [hour, minute] = tob.split(':');
+
+    // Using Vedic astrology calculations through a reliable method
+    const response = await axios.get('https://api.vedicastroapi.com/v3/get_planet_positions', {
+      params: {
+        dob: dob,
+        tob: tob,
+        lon: lon,
+        lat: lat,
+        tz: 'auto',
+        api_key: process.env.ASTRO_API_KEY || 'default'
+      },
+      timeout: 5000
+    }).catch(() => null);
+
+    return response?.data;
+  } catch (error) {
+    console.warn("⚠️  External API failed, falling back to local calculation:", error.message);
+    return null;
+  }
+};
+
+/**
  * POST /api/birth-chart
- * Body: { name, dob, tob, lat, lon, place }
+ * Body: { name, dob, tob, lat, lon }
+ * Uses external API if available, falls back to local calculations
  */
 router.post("/", async (req, res) => {
   try {
@@ -20,20 +55,29 @@ router.post("/", async (req, res) => {
       });
     }
 
-    console.log(`📊 Calculating birth chart for: ${name}`);
+    console.log(`📊 Fetching birth chart for: ${name}`);
 
-    // Step 1: Calculate the birth chart using our astro math
-    const chartData = calculateBirthChart(dob, tob, lat, lon);
+    // Step 1: Try to get chart from external API first
+    let chartData = await fetchFromAstroAPI(dob, tob, lat, lon);
 
-    // Step 2: Send chart data to Gemini for interpretation
+    // Step 2: If external API fails, use local calculations
+    if (!chartData) {
+      console.log("Using local astrology calculations...");
+      chartData = calculateBirthChart(dob, tob, lat, lon);
+    } else {
+      console.log("✅ Using accurate chart from external API");
+    }
+
+    // Step 3: Send chart data to Gemini for AI interpretation
     const interpretation = await interpretBirthChart(chartData, name);
 
-    // Step 3: Return both raw data and interpretation
+    // Step 4: Return both raw data and AI interpretation
     res.json({
       success: true,
       name,
       chart: chartData,
-      interpretation
+      interpretation,
+      chartSource: chartData.source || "local_calculation"
     });
 
   } catch (err) {

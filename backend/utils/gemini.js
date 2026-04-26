@@ -103,34 +103,80 @@ const askGemini = async (prompt) => {
 };
 
 /**
- * Generate birth chart interpretation
+ * Generate birth chart interpretation with enhanced AI predictions
  */
 const interpretBirthChart = async (chartData, name) => {
+  // Extract key data for more detailed analysis
+  const lagna = chartData.ascendant?.sign || "Unknown";
+  const sun = chartData.sun?.sign || "Unknown";
+  const moon = chartData.moon?.sign || "Unknown";
+  const venus = chartData.planets?.Venus?.sign || "Unknown";
+  const mars = chartData.planets?.Mars?.sign || "Unknown";
+  const jupiter = chartData.planets?.Jupiter?.sign || "Unknown";
+  const saturn = chartData.planets?.Saturn?.sign || "Unknown";
+  
   const prompt = `
-You are a Vedic astrologer. Based on the following birth chart data, provide a detailed interpretation.
+You are an expert Vedic astrologer with deep knowledge of natal chart interpretation and predictive astrology.
 
-Person: ${name}
+NATIVE DETAILS:
+Name: ${name}
 
-BIRTH CHART DATA:
-- Lagna (Ascendant): ${chartData.ascendant.sign} at ${chartData.ascendant.degrees}°
-- Sun Sign: ${chartData.sun.sign} in House ${chartData.sun.house}
-- Moon Sign (Rashi): ${chartData.moon.sign} in House ${chartData.moon.house}, Nakshatra: ${chartData.moon.nakshatra}
-- Mercury: ${chartData.planets.Mercury.sign} in House ${chartData.planets.Mercury.house}
-- Venus: ${chartData.planets.Venus.sign} in House ${chartData.planets.Venus.house}
-- Mars: ${chartData.planets.Mars.sign} in House ${chartData.planets.Mars.house}
-- Jupiter: ${chartData.planets.Jupiter.sign} in House ${chartData.planets.Jupiter.house}
-- Saturn: ${chartData.planets.Saturn.sign} in House ${chartData.planets.Saturn.house}
-- Rahu: ${chartData.planets.Rahu.sign} in House ${chartData.planets.Rahu.house}
-- Ketu: ${chartData.planets.Ketu.sign} in House ${chartData.planets.Ketu.house}
+ACCURATE BIRTH CHART DATA:
+- Lagna/Ascendant: ${lagna} (${chartData.ascendant?.degrees?.toFixed(2) || "N/A"}°)
+- Sun: ${sun} (House ${chartData.sun?.house || "N/A"})
+- Moon: ${moon} (House ${chartData.moon?.house || "N/A"}, Nakshatra: ${chartData.moon?.nakshatra || "N/A"})
+- Mercury: ${chartData.planets?.Mercury?.sign || "N/A"} (House ${chartData.planets?.Mercury?.house || "N/A"})
+- Venus: ${venus} (House ${chartData.planets?.Venus?.house || "N/A"})
+- Mars: ${mars} (House ${chartData.planets?.Mars?.house || "N/A"})
+- Jupiter: ${jupiter} (House ${chartData.planets?.Jupiter?.house || "N/A"})
+- Saturn: ${saturn} (House ${chartData.planets?.Saturn?.house || "N/A"})
+- Rahu: ${chartData.planets?.Rahu?.sign || "N/A"} (House ${chartData.planets?.Rahu?.house || "N/A"})
+- Ketu: ${chartData.planets?.Ketu?.sign || "N/A"} (House ${chartData.planets?.Ketu?.house || "N/A"})
 
-Please provide:
-1. **Personality Analysis** (based on Lagna, Sun, Moon): 3-4 sentences about character, strengths, challenges
-2. **Career Insights** (based on 10th house and relevant planets): 2-3 sentences about suitable careers and professional life
-3. **Relationships** (based on 7th house and Venus): 2 sentences
-4. **Future Predictions** (next 1-2 years, based on planetary transits and dashas): 3-4 sentences
+ANALYSIS INSTRUCTIONS:
+Use classical Vedic astrology principles to provide accurate, data-driven predictions.
 
-Keep the tone insightful, positive yet honest. Use Vedic astrology principles.
-Format with clear sections using the headers above.
+Please provide a detailed interpretation covering:
+
+1. **Personality & Core Nature** (4-5 sentences):
+   - Analyze Lagna for overall personality and health
+   - Consider Sun for identity and ego
+   - Include Moon for emotional nature
+   - Mention key strengths and innate challenges
+
+2. **Career & Finances** (4-5 sentences):
+   - Analyze 10th house ruler and career indicators
+   - Consider Jupiter for expansion and luck
+   - Mercury for intellectual pursuits
+   - Predict suitable professions and financial patterns
+
+3. **Love & Relationships** (3-4 sentences):
+   - Analyze 7th house and Venus for romantic life
+   - Mars influence on passion and compatibility
+   - Saturn's role in long-term commitment
+   - Timeline for significant relationships
+
+4. **Health Patterns** (2-3 sentences):
+   - Moon and 8th house influence
+   - Lagna strength for physical constitution
+   - Vulnerable periods and health recommendations
+
+5. **Life Predictions** (5-6 sentences):
+   - Current Dasha/planetary period influence
+   - Next 2-3 years outlook and major events
+   - Saturn transit effects if applicable
+   - Auspicious periods for major decisions
+   - Challenges to be prepared for
+
+6. **Spiritual & Personal Growth** (2-3 sentences):
+   - Nodes (Rahu/Ketu) spiritual lessons
+   - Saturn's wisdom and maturity phases
+   - Recommended practices or focus areas
+
+Keep predictions specific, honest, and based on planetary positions.
+Use Vedic astrology terminology and principles.
+Provide actionable insights while maintaining accuracy.
+Format with clear headers as shown above.
 `;
   return await askGemini(prompt);
 };
