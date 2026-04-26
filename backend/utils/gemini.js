@@ -3,12 +3,12 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // List of supported Gemini models in order of preference
+// Using correct model names with full paths
 const SUPPORTED_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
   "gemini-2.0-flash",
-  "gemini-2.0-flash-001",
-  "gemini-2.0-flash-lite-001"
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+  "gemini-pro"
 ];
 
 // Track model availability and last failed time
@@ -78,53 +78,47 @@ const askGemini = async (prompt) => {
   try {
     console.log("🔵 Starting askGemini...");
     const genAI = getGeminiClient();
-    const availableModels = SUPPORTED_MODELS.filter(m => modelStatus[m].available);
     
-    console.log(`📊 Available models: ${availableModels.length}/${SUPPORTED_MODELS.length}`);
-    
-    if (availableModels.length === 0) {
-      // All models in cooldown, try all in order
-      availableModels.push(...SUPPORTED_MODELS);
-      console.log("⚠️  All models in cooldown, trying all...");
-    }
-    
+    // Try models in order
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
     let lastError;
     
-    for (const modelName of availableModels) {
+    for (const modelName of modelsToTry) {
       try {
         console.log(`🔄 Trying model: ${modelName}...`);
         const model = genAI.getGenerativeModel({ model: modelName });
-        console.log(`📤 Sending prompt to ${modelName} (${prompt.length} chars)...`);
         
-        const result = await model.generateContent(prompt);
+        // Add safety settings to avoid content filtering issues
+        const response = await model.generateContent({
+          contents: [{
+            role: "user",
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            maxOutputTokens: 2048,
+            temperature: 0.7,
+          }
+        });
         
-        if (!result?.response) {
-          throw new Error("No response object received from API");
+        // Check if we got a valid response
+        if (response && response.response && response.response.text) {
+          const text = response.response.text();
+          if (text && text.length > 0) {
+            console.log(`✅ Request succeeded with model: ${modelName} (${text.length} chars)`);
+            return text;
+          }
         }
         
-        const text = result.response.text();
-        if (!text) {
-          throw new Error("Empty response text from API");
-        }
-        
-        // Mark model as available if it succeeded
-        if (modelStatus[modelName]) {
-          modelStatus[modelName].available = true;
-          modelStatus[modelName].failedAt = null;
-        }
-        
-        console.log(`✅ Request succeeded with model: ${modelName} (${text.length} chars)`);
-        return text;
+        throw new Error("Empty response from model");
       } catch (error) {
         lastError = error;
         const errorMsg = error?.message || String(error);
         console.error(`❌ Model ${modelName} failed:`, errorMsg);
-        markModelFailed(modelName);
         // Continue to next model
       }
     }
     
-    // If all models failed
+    // If all models failed, throw error
     console.error("❌ All models exhausted");
     throw new Error(`All Gemini models failed. Last error: ${lastError?.message}`);
   } catch (error) {
@@ -134,56 +128,29 @@ const askGemini = async (prompt) => {
 };
 
 /**
- * Generate birth chart interpretation with enhanced AI predictions (10 years)
+ * Generate birth chart interpretation with 10 year predictions
  */
 const interpretBirthChart = async (chartData, name, dob = "") => {
   try {
-    // Safely extract chart data with fallbacks
+    // Safely extract chart data
     const ascendant = chartData?.ascendant || {};
     const sun = chartData?.sun || {};
     const moon = chartData?.moon || {};
     const planets = chartData?.planets || {};
     
-    const lagna = ascendant.sign || "Unknown";
-    const sunSign = sun.sign || "Unknown";
-    const moonSign = moon.sign || "Unknown";
-    
-    const prompt = `You are a Vedic astrologer. Analyze this birth chart:
+    const prompt = `Analyze this birth chart and provide predictions:
 
-NAME: ${name} | DOB: ${dob}
+Name: ${name}
+Lagna: ${ascendant.sign || "?"} | Sun: ${sun.sign || "?"} | Moon: ${moon.sign || "?"}
 
-CHART:
-Lagna: ${lagna} (${ascendant.degrees?.toFixed(1) || "N/A"}°) | Sun: ${sunSign} (H${sun.house || "?"})
-Moon: ${moonSign} (H${moon.house || "?"}, ${moon.nakshatra || "?"}) | Mercury: ${planets.Mercury?.sign || "?"} (H${planets.Mercury?.house || "?"})
-Venus: ${planets.Venus?.sign || "?"} (H${planets.Venus?.house || "?"}) | Mars: ${planets.Mars?.sign || "?"} (H${planets.Mars?.house || "?"})
-Jupiter: ${planets.Jupiter?.sign || "?"} (H${planets.Jupiter?.house || "?"}) | Saturn: ${planets.Saturn?.sign || "?"} (H${planets.Saturn?.house || "?"})
-Rahu: ${planets.Rahu?.sign || "?"} (H${planets.Rahu?.house || "?"}) | Ketu: ${planets.Ketu?.sign || "?"} (H${planets.Ketu?.house || "?"})
+Provide:
+1. Personality (3-4 sentences)
+2. Career outlook (3-4 sentences) 
+3. Relationships (3-4 sentences)
+4. Next 10 years prediction (8-10 sentences covering years 1-3, 3-5, 5-10)
+5. Key advice (2-3 sentences)
 
-PROVIDE DETAILED 10-YEAR PREDICTION:
-
-1. PERSONALITY (4-5 sentences): Analyze Lagna, Sun, Moon for personality traits, strengths, and challenges.
-
-2. CAREER (4-5 sentences): Analyze 10th house and Jupiter for career path, suitable professions, and financial outlook.
-
-3. RELATIONSHIPS (4-5 sentences): Analyze 7th house and Venus for love, marriage timing, and relationship patterns.
-
-4. HEALTH (3 sentences): Physical constitution, vulnerable areas, and wellness recommendations.
-
-5. NEXT 10 YEARS PREDICTIONS (12-15 sentences - CRITICAL):
-   - Years 0-3: Current phase, opportunities, challenges, relationship developments
-   - Years 3-5: Mid-term transitions, career changes, major decisions
-   - Years 5-7: Significant achievements, family milestones, spiritual growth
-   - Years 7-10: Long-term stability, life purpose alignment, legacy building
-   
-   Base on: Dasha periods, Saturn transits, Jupiter cycles, and planetary periods.
-
-6. STRENGTHS & TALENTS (3 sentences): Key strengths to leverage.
-
-7. CHALLENGES (3 sentences): Areas needing conscious growth with specific solutions.
-
-8. RECOMMENDATIONS (3 sentences): Practical advice and spiritual practices.
-
-Use Vedic astrology principles. Be specific, honest, and encouraging. Format with clear headers.`;
+Be concise and specific.`;
 
     return await askGemini(prompt);
   } catch (error) {
@@ -193,57 +160,25 @@ Use Vedic astrology principles. Be specific, honest, and encouraging. Format wit
 };
 
 /**
- * Generate detailed compatibility analysis for Kundali matching (10+ years outlook)
+ * Generate compatibility analysis for Kundali matching
  */
 const interpretCompatibility = async (boyName, girlName, boyMoon, girlMoon, gunaMilanResult) => {
   const score = gunaMilanResult.score || 0;
-  const details = gunaMilanResult.details || {};
   
-  const prompt = `You are a Vedic astrologer specializing in marriage compatibility.
+  const prompt = `Analyze marriage compatibility:
 
-COUPLE: ${boyName} (Moon: ${boyMoon}) & ${girlName} (Moon: ${girlMoon})
-GUNA MILAN SCORE: ${score}/36
+${boyName} (Moon: ${boyMoon}) & ${girlName} (Moon: ${girlMoon})
+Guna Milan Score: ${score}/36
 
-BREAKDOWN: ${Object.entries(details).map(([k, v]) => `${k}: ${v}`).join(" | ")}
+Provide:
+1. Overall compatibility assessment (3-4 sentences)
+2. Emotional & romantic compatibility (3-4 sentences)
+3. Strengths of this marriage (3-4 sentences)
+4. Potential challenges (3 sentences)
+5. Next 10 years marriage prediction (8-10 sentences)
+6. Final recommendation (2-3 sentences)
 
-PROVIDE COMPREHENSIVE 10+ YEAR MARRIAGE ANALYSIS:
-
-1. OVERALL COMPATIBILITY (4 sentences): Is this a good match? Base on score and Moon compatibility.
-
-2. EMOTIONAL COMPATIBILITY (4 sentences): How well do they understand each other emotionally? Communication patterns.
-
-3. PHYSICAL & ROMANTIC COMPATIBILITY (3 sentences): Chemistry, passion, and intimate life.
-
-4. FINANCIAL & PRACTICAL LIFE (3 sentences): Money management, lifestyle compatibility, domestic harmony.
-
-5. FAMILY & CHILDREN (3 sentences): Parenting styles, family expansion plans, family harmony.
-
-6. STRENGTHS OF THIS MARRIAGE (6-8 sentences): 
-List areas where this couple will succeed, areas of natural harmony, and bonding opportunities.
-
-7. CHALLENGES & SOLUTIONS (6-8 sentences): 
-Potential friction areas, different values/styles, and specific solutions to overcome each challenge.
-
-8. NEXT 10+ YEARS MARRIAGE PREDICTIONS (15-18 sentences - MOST IMPORTANT):
-   - YEAR 1-3: Honeymoon phase, adjustment period, expectations vs reality, bonding opportunities
-   - YEAR 3-5: Stabilization, major decisions (children, home, career), family integration
-   - YEAR 5-7: Maturity of relationship, family establishment, career peak, commitment deepening
-   - YEAR 7-10: Long-term stability, spiritual partnership, legacy building, joy and fulfillment
-   - YEAR 10+: Golden years, continued growth, financial security, life purpose alignment
-
-Base on Moon sign compatibility, Saturn transits, Jupiter cycles, and 7-year marriage cycles.
-
-9. AUSPICIOUS TIMING (2 sentences): Best time for marriage and major life events.
-
-10. REMEDIES & ADVICE (4 sentences): 
-Specific practices to strengthen bond, communication techniques, date ideas, and how to navigate challenges together.
-
-11. FINAL RECOMMENDATION (2 sentences): 
-Clear verdict on proceeding with marriage and likelihood of long-term success.
-
-Score interpretation: <18=challenging, 18-24=acceptable, 24-32=good, 32-36=excellent
-
-Use Vedic astrology principles. Be honest but diplomatic. Provide actionable marriage advice. Format with clear headers.`;
+Be honest and specific.`;
 
   return await askGemini(prompt);
 };
@@ -252,20 +187,17 @@ Use Vedic astrology principles. Be honest but diplomatic. Provide actionable mar
  * Generate horoscope for a moon sign
  */
 const generateHoroscope = async (moonSign, period) => {
-  const prompt = `
-You are a Vedic astrologer. Generate a ${period} horoscope for the moon sign ${moonSign}.
+  const prompt = `Generate a ${period} horoscope for moon sign ${moonSign}.
 
-Please cover:
-1. **Overall Energy**: General theme for the ${period}
-2. **Love & Relationships**: What to expect
-3. **Career & Finance**: Professional and financial outlook
-4. **Health**: Wellness guidance
-5. **Lucky Number & Color**: One lucky number and color for the ${period}
+Provide:
+1. Overall energy and themes
+2. Love & relationships outlook  
+3. Career & finances
+4. Health guidance
+5. Lucky number & color
 
-Keep it insightful, practical, and inspiring. Use Vedic astrology principles.
-Format with clear section headers.
-Write about 200-250 words total.
-`;
+Be concise, practical, and inspiring. Use Vedic astrology principles.`;
+
   return await askGemini(prompt);
 };
 
