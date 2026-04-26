@@ -5,10 +5,10 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // List of supported Gemini models in order of preference
 // Using correct model names with full paths
 const SUPPORTED_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
-  "gemini-pro"
+  "gemini-2.0-flash-001"
 ];
 
 // Track model availability and last failed time
@@ -80,7 +80,7 @@ const askGemini = async (prompt) => {
     const genAI = getGeminiClient();
     
     // Try models in order
-    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
     let lastError;
     
     for (const modelName of modelsToTry) {
