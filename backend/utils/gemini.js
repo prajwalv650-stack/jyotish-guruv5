@@ -2,6 +2,23 @@
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+// List of supported Gemini models in order of preference
+const SUPPORTED_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-001",
+  "gemini-2.0-flash-lite-001"
+];
+
+// Track model availability and last failed time
+const modelStatus = {};
+SUPPORTED_MODELS.forEach(model => {
+  modelStatus[model] = { available: true, failedAt: null };
+});
+
+const MODEL_RETRY_DELAY = 30000; // 30 seconds before retrying a failed model
+
 // Initialize Gemini with API key from environment variable ONLY
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -12,13 +29,77 @@ const getGeminiClient = () => {
 };
 
 /**
- * Send a prompt to Gemini and get text response
+ * Get the next available model, with fallback to others if one fails
+ */
+const getAvailableModel = () => {
+  const now = Date.now();
+  
+  // Reset models that have been in cooldown for long enough
+  SUPPORTED_MODELS.forEach(model => {
+    if (modelStatus[model].failedAt && (now - modelStatus[model].failedAt) > MODEL_RETRY_DELAY) {
+      modelStatus[model].available = true;
+      modelStatus[model].failedAt = null;
+    }
+  });
+  
+  // Return first available model
+  for (const model of SUPPORTED_MODELS) {
+    if (modelStatus[model].available) {
+      return model;
+    }
+  }
+  
+  // If all are unavailable, return the first one (most recent failure)
+  return SUPPORTED_MODELS[0];
+};
+
+/**
+ * Mark a model as failed
+ */
+const markModelFailed = (model) => {
+  if (modelStatus[model]) {
+    modelStatus[model].available = false;
+    modelStatus[model].failedAt = Date.now();
+  }
+};
+
+/**
+ * Send a prompt to Gemini and get text response with fallback to other models
  */
 const askGemini = async (prompt) => {
   const genAI = getGeminiClient();
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+  const availableModels = SUPPORTED_MODELS.filter(m => modelStatus[m].available);
+  
+  if (availableModels.length === 0) {
+    // All models in cooldown, try all in order
+    availableModels.push(...SUPPORTED_MODELS);
+  }
+  
+  let lastError;
+  
+  for (const modelName of availableModels) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      
+      // Mark model as available if it succeeded
+      if (modelStatus[modelName]) {
+        modelStatus[modelName].available = true;
+        modelStatus[modelName].failedAt = null;
+      }
+      
+      console.log(`✅ Request succeeded with model: ${modelName}`);
+      return result.response.text();
+    } catch (error) {
+      lastError = error;
+      console.warn(`⚠️  Model ${modelName} failed: ${error.message}`);
+      markModelFailed(modelName);
+      // Continue to next model
+    }
+  }
+  
+  // If all models failed
+  throw new Error(`All Gemini models failed. Last error: ${lastError?.message}`);
 };
 
 /**
@@ -106,5 +187,8 @@ Write about 200-250 words total.
 module.exports = {
   interpretBirthChart,
   interpretCompatibility,
-  generateHoroscope
+  generateHoroscope,
+  getAvailableModel,
+  modelStatus,
+  SUPPORTED_MODELS
 };

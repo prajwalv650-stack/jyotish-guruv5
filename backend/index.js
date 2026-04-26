@@ -7,6 +7,7 @@ const path = require("path");
 const birthChartRoutes = require("./routes/birthChart");
 const matchRoutes = require("./routes/match");
 const horoscopeRoutes = require("./routes/horoscope");
+const { getAvailableModel, modelStatus, SUPPORTED_MODELS } = require("./utils/gemini");
 
 const app = express();
 
@@ -20,6 +21,18 @@ app.use(express.static(path.join(__dirname, "../frontend/build")));
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "Astrology API running ✨" });
+});
+
+// Model status endpoint
+app.get("/api/models/status", (req, res) => {
+  const currentModel = getAvailableModel();
+  const status = {
+    currentModel,
+    supportedModels: SUPPORTED_MODELS,
+    modelStatus: modelStatus,
+    timestamp: new Date().toISOString()
+  };
+  res.json(status);
 });
 
 // Routes
